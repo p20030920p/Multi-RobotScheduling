@@ -3,7 +3,6 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Tuple, Optional
 import random
 from collections import defaultdict
-from dataclasses import dataclass
 from datetime import datetime
 import heapq
 import time
@@ -68,8 +67,10 @@ class TaskSequenceTracker:
 
         return len(all_task_ids) == SimConfig.NUM_INITIAL_TASKS
 
-    def check_task_completion(self) -> Tuple[bool, List[int]]:
+    def check_task_completion(self, robots: List['Robot']) -> Tuple[bool, List[int]]:
         """检查任务完成情况
+        Args:
+            robots: 机器人列表
         Returns:
             is_complete: 是否所有任务都已完成
             uncompleted: 未完成的任务ID列表
@@ -78,12 +79,13 @@ class TaskSequenceTracker:
         completed_ids = set()
 
         # 收集所有已完成的任务ID
-        for robot in self.robots:
+        for robot in robots:
             completed_ids.update(robot.completed_tasks)
 
         # 计算未完成的任务
         uncompleted = sorted(list(all_task_ids - completed_ids))
         return len(uncompleted) == 0, uncompleted
+
 
 # Data structures
 @dataclass
@@ -145,6 +147,7 @@ class Robot:
     last_update_time: int
     completed_tasks: List[int]  # 存储已完成的任务ID
     start_position: Position
+
     def get_task_statistics(self, tasks: List[Task]) -> Tuple[int, int, int, List[int]]:
         """获取任务统计信息
         Returns:
@@ -157,6 +160,7 @@ class Robot:
         type1_count = sum(1 for task_id in completed_ids if tasks[task_id - 1].type == 1)
         type2_count = sum(1 for task_id in completed_ids if tasks[task_id - 1].type == 2)
         return len(completed_ids), type1_count, type2_count, sorted(completed_ids)
+
 
 class TaskQueues:
     def __init__(self):
@@ -834,8 +838,6 @@ class System:
 
         self.task_tracker.record_task(robot.id, task_record)
 
-
-
     def generate_dynamic_tasks(self):
         """Dynamically generate new tasks based on system load"""
         system_load = self.calculate_system_load()
@@ -1048,14 +1050,14 @@ class System:
             # Check for stuck robots
             self._check_stuck_robots()
 
-            is_complete, uncompleted = self.check_task_completion()
+            # Check task completion status
+            is_complete, uncompleted = self.task_tracker.check_task_completion(self.robots)
             if not is_complete:
                 print("\nWarning: Not all tasks were completed!")
                 print(f"Uncompleted task IDs: {uncompleted}")
+
         # Print final summary
         self.print_summary()
-
-
 
     def _check_termination(self) -> bool:
         """Check if simulation should terminate"""
@@ -1117,6 +1119,7 @@ class System:
             print(f"  Type 1 (Material Transport) completed: {type1_count}")
             print(f"  Type 2 (Empty Barrel Transport) completed: {type2_count}")
             print(f"  Completed task IDs: {completed_ids}")
+
 
 def main():
     """Main entry point"""
